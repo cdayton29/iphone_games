@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Arcade</title>
+
+<!-- Viewport: cover the notch, kill pinch-zoom -->
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+<!-- iOS standalone: no address bar, translucent status bar -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Arcade">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#10131F" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E9ECF3" media="(prefers-color-scheme: light)">
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/favicon-64.png" sizes="64x64">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ─────────────  LAUNCHER  ───────────── -->
+<main id="hub" data-scroll>
+  <header class="masthead">
+    <div class="plate">
+      <span class="led" id="led" aria-hidden="true"></span>
+      <h1>Arcade</h1>
+    </div>
+    <button id="theme-btn" class="chip" type="button" aria-label="Switch appearance">
+      <span id="theme-label">Dark</span>
+    </button>
+  </header>
+
+  <p class="readout" id="readout">Reading cartridges…</p>
+
+  <section id="grid" class="grid" aria-label="Games"></section>
+
+  <footer class="colophon">
+    <span id="cache-tag">cache —</span>
+    <span>Add a folder under <code>/games</code>, list it in <code>games.json</code>, bump the cache.</span>
+  </footer>
+</main>
+
+<!-- ─────────────  GAME STAGE  ───────────── -->
+<div id="stage" class="stage" hidden></div>
+
+<!-- Floating home control: lives in the hub document, so it always works -->
+<button id="home-btn" class="home-btn" type="button" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span>Menu</span>
+</button>
+
+<!-- Update pill -->
+<div id="update-pill" class="update-pill" hidden>
+  <span>New version downloaded</span>
+  <button id="update-btn" type="button">Reload</button>
+</div>
+
+<script type="module" src="hub.js"></script>
+</body>
+</html>

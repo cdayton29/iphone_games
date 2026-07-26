@@ -1,0 +1,24 @@
+{
+  "games": [
+    {
+      "id": "solitaire",
+      "title": "Solitaire",
+      "subtitle": "Klondike, draw one",
+      "icon": "games/solitaire/icon.png",
+      "path": "games/solitaire/",
+      "accent": "#E85D5D",
+      "assets": [],
+      "glyph": "♥"
+    },
+    {
+      "id": "sudoku",
+      "title": "Sudoku",
+      "subtitle": "Four difficulties, one solution each",
+      "icon": "games/sudoku/icon.png",
+      "path": "games/sudoku/",
+      "accent": "#5FD6A9",
+      "assets": [],
+      "glyph": "◫"
+    }
+  ]
+}
