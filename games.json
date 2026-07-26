@@ -6,7 +6,9 @@
       "subtitle": "Klondike, draw one",
       "icon": "games/solitaire/icon.png",
       "path": "games/solitaire/",
-      "accent": "#E85D5D"
+      "accent": "#E85D5D",
+      "assets": [],
+      "glyph": "♥"
     },
     {
       "id": "sudoku",
@@ -14,7 +16,21 @@
       "subtitle": "Four difficulties, one solution each",
       "icon": "games/sudoku/icon.png",
       "path": "games/sudoku/",
-      "accent": "#5FD6A9"
+      "accent": "#5FD6A9",
+      "assets": [],
+      "glyph": "◫"
+    },
+    {
+      "id": "2048",
+      "title": "2048",
+      "subtitle": "Slide, merge, climb the powers of two",
+      "icon": "games/2048/icon.png",
+      "path": "games/2048/",
+      "accent": "#C22E86",
+      "glyph": "2",
+      "assets": [
+        "games/2048/styles.css"
+      ]
     }
   ]
 }
