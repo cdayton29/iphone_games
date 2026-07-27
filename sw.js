@@ -5,7 +5,7 @@
    That single edit is what tells iOS to pull the new assets down.
    =========================================================== */
 
-const CACHE_NAME = 'arcade-v12';
+const CACHE_NAME = 'arcade-v13';
 
 /** Resolve relative to the worker, so project subpaths (GitHub Pages) work. */
 const url = (path) => new URL(path, self.location).toString();
