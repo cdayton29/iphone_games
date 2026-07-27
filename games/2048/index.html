@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2048</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Slide, merge, climb the powers of two. Works offline.">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="2048">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#EEF0F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A0C11" media="(prefers-color-scheme: dark)">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <header class="head">
+    <div class="scores">
+      <div class="score" id="score-box">
+        <span class="score-label">Score</span>
+        <span class="score-value" id="score">0</span>
+        <span class="score-gain" id="score-gain" aria-hidden="true"></span>
+      </div>
+      <div class="score score-best">
+        <span class="score-label">Best</span>
+        <span class="score-value" id="best">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- the ladder: one rung per power of two, lit as far as you have climbed -->
+  <div class="ladder" id="ladder" role="img" aria-label="Highest tile reached">
+    <div class="rungs" id="rungs"></div>
+    <span class="ladder-top" id="ladder-top">—</span>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <div class="wells" id="wells" aria-hidden="true"></div>
+      <div class="tiles" id="tiles" role="grid" aria-label="2048 board"></div>
+
+      <div class="overlay" id="overlay-win" hidden>
+        <div class="overlay-inner">
+          <p class="overlay-kicker">2<sup>11</sup></p>
+          <h2>2048.</h2>
+          <p class="overlay-sub">You can stop here, or keep going — the ladder has more rungs.</p>
+          <button class="btn btn-primary" id="btn-keep" type="button">Keep playing</button>
+          <button class="btn btn-quiet" id="btn-win-new" type="button">Start a new game</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay-over" hidden>
+        <div class="overlay-inner">
+          <p class="overlay-kicker" id="over-kicker">Final score</p>
+          <h2 id="over-score">0</h2>
+          <p class="overlay-sub">No tile has anywhere to go.</p>
+          <button class="btn btn-primary" id="btn-over-new" type="button">Start a new game</button>
+          <button class="btn btn-quiet" id="btn-over-undo" type="button">Undo last move</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-tool" id="btn-undo" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h9a5 5 0 0 1 0 10h-3"/><polyline points="8 5 4 9 8 13"/></svg>
+      <span>Undo</span>
+    </button>
+    <button class="btn btn-tool" id="btn-new" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 5 20 10 15 10"/><path d="M18.7 15a7.5 7.5 0 1 1-1.2-6.3L20 10"/></svg>
+      <span>New game</span>
+    </button>
+  </div>
+
+  <p class="hint" id="hint">Swipe to slide every tile at once.</p>
+
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<section class="dialog" id="dialog-new" role="dialog" aria-modal="true" aria-labelledby="dialog-new-title" hidden>
+  <h2 id="dialog-new-title">Start a new game?</h2>
+  <p>This board and its score go away. Your best score stays.</p>
+  <button class="btn btn-primary" id="btn-new-confirm" type="button">Start a new game</button>
+  <button class="btn btn-quiet" id="btn-new-cancel" type="button">Keep this board</button>
+</section>
+
+<script>
+// Arcade bridge — runs before the game so it can set the theme up front.
+(function () {
+  var root = document.documentElement;
+  if (window.parent !== window) root.setAttribute('data-arcade', '');
+  var theme = new URLSearchParams(location.search).get('theme');
+  if (theme) root.setAttribute('data-theme', theme);
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'theme') root.setAttribute('data-theme', e.data.theme);
+  });
+
+  // Say something useful if script.js is missing rather than showing a dead board.
+  function fail(why) {
+    var box = document.getElementById('boot');
+    if (!box || !box.hidden) return;
+    document.getElementById('boot-why').textContent = why;
+    box.hidden = false;
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT') fail('script.js could not be loaded \u2014 the file is missing (404).');
+  }, true);
+  setTimeout(function () {
+    if (!window.__booted) fail('script.js loaded but never finished starting.');
+  }, 1500);
+})();
+</script>
+
+<div id="boot" hidden>
+  <h2>2048 didn't start</h2>
+  <p id="boot-why"></p>
+  <p>Expected <code>script.js</code> and <code>styles.css</code> in the same folder as this file.</p>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
