@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Break — 8-Ball Pool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="Offline 8-ball pool for your pocket. Two players or against the computer.">
+<meta name="theme-color" content="#0B100E">
+<meta name="color-scheme" content="dark">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Break">
+<meta name="format-detection" content="telephone=no">
+
+<style>
+/* Inlined so there is no separate styles.css to misplace. */
+/* ============================================================
+   Break — 8-Ball Pool
+   Palette: hall dark, walnut rail, felt, brass, chalk
+   Type:    Iowan Old Style / Palatino (display, on-device)
+            system sans (interface + data)
+   ============================================================ */
+
+:root{
+  --hall:#0B100E;
+  --hall-2:#111815;
+  --walnut:#3A2419;
+  --walnut-lo:#25150E;
+  --felt:#0E6B4F;
+  --brass:#C9A227;
+  --brass-dim:#8A6E1B;
+  --chalk:#5B8FB9;
+  --ivory:#F3EFE6;
+  --mute:#8E9A93;
+  --line:rgba(243,239,230,.10);
+  --ok:#3FA06A;
+  --bad:#C4553D;
+
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+
+  --side-w:52px;
+
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+html,body{
+  height:100%;
+  overflow:hidden;
+  overscroll-behavior:none;
+  background:var(--hall);
+  color:var(--ivory);
+  font-family:var(--ui);
+  -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+}
+
+body{
+  position:fixed;
+  inset:0;
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #16211C 0%, transparent 60%),
+    var(--hall);
+}
+
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+[hidden]{display:none !important}
+
+.screen{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  padding:calc(var(--safe-t)) calc(var(--safe-r)) calc(var(--safe-b)) calc(var(--safe-l));
+}
+
+.eyebrow{
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--mute);font-weight:600;
+}
+
+/* ------------------------------------------------ menu */
+
+#menu{overflow-y:auto;overscroll-behavior:contain}
+
+.menu-inner{
+  margin:auto;width:100%;max-width:440px;
+  padding:32px 22px 28px;
+  display:flex;flex-direction:column;gap:26px;
+}
+
+.brand{text-align:center}
+
+.brand-mark{
+  position:relative;height:56px;margin-bottom:14px;
+  display:flex;justify-content:center;align-items:center;
+}
+.brand-mark span{
+  position:absolute;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;
+}
+.cue-ball{
+  transform:translateX(-17px);
+  background:radial-gradient(circle at 34% 30%, #fff 0%, #EFE9DA 45%, #B9B0A0 100%);
+  box-shadow:0 6px 14px rgba(0,0,0,.55);
+}
+.eight-ball{
+  transform:translateX(17px);
+  background:radial-gradient(circle at 34% 30%, #4A4A4A 0%, #171717 50%, #050505 100%);
+  box-shadow:0 6px 14px rgba(0,0,0,.6);
+  font:700 15px/1 var(--ui);
+  color:#111;
+}
+.eight-ball::before{
+  content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#F3EFE6;
+}
+.eight-ball::after{content:"8";position:absolute;font:700 12px/1 var(--ui);color:#141414}
+
+h1{
+  font-family:var(--display);
+  font-size:44px;font-weight:400;letter-spacing:-.01em;line-height:1;
+}
+.brand-sub{margin-top:8px;color:var(--mute);font-size:14px}
+
+.menu-block{display:flex;flex-direction:column;gap:10px}
+
+.mode-card{
+  text-align:left;padding:16px 18px;border-radius:14px;
+  background:linear-gradient(180deg,#16201C,#111815);
+  border:1px solid var(--line);
+  display:flex;flex-direction:column;gap:3px;
+  transition:border-color .16s,transform .12s;
+}
+.mode-card:active{transform:scale(.985)}
+.mode-card.is-on{border-color:var(--brass);box-shadow:inset 0 0 0 1px rgba(201,162,39,.28)}
+.mode-name{font-size:17px;font-weight:600}
+.mode-note{font-size:13px;color:var(--mute)}
+
+.seg{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:4px;
+  padding:4px;border-radius:12px;background:#111815;border:1px solid var(--line);
+}
+.seg-btn{
+  padding:11px 4px;border-radius:9px;font-size:14px;font-weight:600;color:var(--mute);
+  transition:background .16s,color .16s;
+}
+.seg-btn.is-on{background:var(--brass);color:#1A1305}
+
+.diff-note{font-size:13px;line-height:1.5;color:var(--mute);min-height:38px}
+
+.primary{
+  padding:17px;border-radius:14px;font-size:17px;font-weight:650;
+  background:linear-gradient(180deg,#DDB735,#B08D16);
+  color:#1A1305;
+  box-shadow:0 10px 24px rgba(201,162,39,.20);
+  transition:transform .12s,filter .16s;
+}
+.primary:active{transform:scale(.985);filter:brightness(.94)}
+
+.ghost{
+  padding:15px;border-radius:14px;font-size:15px;font-weight:600;
+  color:var(--ivory);border:1px solid var(--line);
+}
+.ghost:active{background:#141B18}
+
+.tiny{font-size:12px;line-height:1.6;color:#63706A;text-align:center}
+
+/* ------------------------------------------------ top bar */
+
+#topbar{
+  display:flex;align-items:center;gap:8px;
+  height:52px;padding:0 10px;
+  border-bottom:1px solid var(--line);
+  flex:0 0 auto;
+}
+.icon-btn{
+  width:36px;height:36px;padding:8px;border-radius:10px;
+  color:var(--mute);border:1px solid var(--line);flex:0 0 auto;
+}
+.icon-btn:active{background:#141B18;color:var(--ivory)}
+
+.status{flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;gap:2px}
+.status .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.turn{
+  font-size:15px;font-weight:600;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.turn.is-ai{color:var(--chalk)}
+.turn.is-foul{color:var(--bad)}
+
+/* ------------------------------------------------ stage */
+
+#stage{
+  flex:1;min-height:0;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:4px;
+  position:relative;
+}
+
+#table{
+  display:block;
+  max-width:100%;max-height:100%;
+  border-radius:14px;
+  box-shadow:0 18px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.5);
+  touch-action:none;
+}
+
+.hint{
+  position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+  padding:7px 13px;border-radius:999px;
+  background:rgba(11,16,14,.82);
+  border:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--ivory);
+  white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .2s;
+}
+.hint.show{opacity:1}
+
+.pill{
+  flex:0 0 auto;
+  padding:9px 6px;border-radius:999px;
+  background:rgba(11,16,14,.8);border:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--mute);
+}
+.pill:active{color:var(--ivory);background:#1B241F}
+.pill:disabled{opacity:.3;pointer-events:none}
+
+/* ------------------------------------------------ power meter (signature) */
+
+#side{
+  flex:0 0 var(--side-w);align-self:stretch;
+  display:flex;flex-direction:column;align-items:stretch;gap:6px;
+  padding:2px 0;
+}
+#power{
+  flex:1;min-height:70px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  touch-action:none;
+}
+.power-track{
+  position:relative;flex:1;width:100%;border-radius:22px;
+  background:linear-gradient(180deg,#0A0F0D,#141B18);
+  border:1px solid var(--line);
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.power-fill{
+  position:absolute;left:0;right:0;bottom:0;height:0%;
+  background:linear-gradient(180deg,var(--bad),#D89A2E 55%,var(--brass));
+  transition:height .06s linear;
+}
+.power-grip{
+  position:absolute;left:3px;right:3px;bottom:0;height:44px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#4A2F20,#2A1A11);
+  border:1px solid rgba(201,162,39,.45);
+  box-shadow:0 3px 10px rgba(0,0,0,.6);
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;
+  transition:bottom .06s linear;
+}
+.power-grip span{width:20px;height:2px;border-radius:2px;background:rgba(201,162,39,.55)}
+
+.power-read{text-align:center;line-height:1}
+.power-read b{font-size:14px;font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------ potted balls */
+
+#balls{
+  flex:0 0 auto;
+  display:grid;grid-template-columns:1fr 1fr;gap:3px;
+}
+.bp{
+  position:relative;aspect-ratio:1;border-radius:50%;
+  background:var(--bc);overflow:hidden;
+  opacity:.2;filter:saturate(.15);
+  transition:opacity .25s,filter .25s;
+}
+.bp.down{opacity:1;filter:none}
+.bp.stripe{background:#F1EBDD}
+.bp.stripe::before{content:"";position:absolute;left:0;right:0;top:24%;height:52%;background:var(--bc)}
+.bp::after{
+  content:"";position:absolute;left:21%;top:21%;width:58%;height:58%;
+  border-radius:50%;background:#F6F2E8;
+}
+.bp b{
+  position:absolute;inset:0;z-index:2;
+  display:grid;place-items:center;
+  font:700 9px/1 var(--ui);color:#17150F;
+}
+.bp.eight{grid-column:1 / -1;width:52%;margin:2px auto 0}
+
+/* ------------------------------------------------ side controls */
+
+#aimPad{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.nudge{
+  height:30px;border-radius:9px;
+  background:#141B18;border:1px solid var(--line);
+  display:grid;place-items:center;
+}
+.nudge:active{background:#1B241F}
+.nudge svg{width:16px;height:16px;color:var(--ivory)}
+.nudge:disabled{opacity:.32;pointer-events:none}
+
+#strike{
+  flex:0 0 auto;height:54px;border-radius:13px;
+  background:linear-gradient(180deg,#DDB735,#B08D16);
+  color:#1A1305;font-size:13px;font-weight:700;
+  display:grid;place-items:center;
+  transition:transform .1s,filter .16s;
+}
+#strike:active{transform:scale(.96);filter:brightness(.94)}
+#strike:disabled{opacity:.32;pointer-events:none}
+
+/* ------------------------------------------------ sheets */
+
+.sheet{
+  position:absolute;inset:0;z-index:20;
+  background:rgba(5,8,7,.72);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:20px calc(20px + var(--safe-r)) calc(24px + var(--safe-b)) calc(20px + var(--safe-l));
+  animation:fade .2s ease;
+}
+.sheet-card{
+  width:100%;max-width:420px;
+  padding:26px 22px;border-radius:20px;
+  background:linear-gradient(180deg,#18211D,#0E1512);
+  border:1px solid var(--line);
+  display:flex;flex-direction:column;gap:10px;
+  animation:rise .26s cubic-bezier(.2,.8,.25,1);
+}
+.sheet-card h2{font-family:var(--display);font-size:30px;font-weight:400;line-height:1.1}
+.sheet-card p{font-size:14px;line-height:1.55;color:var(--mute);margin-bottom:8px}
+.sheet-card .primary{margin-top:4px}
+
+@keyframes fade{from{opacity:0}}
+@keyframes rise{from{transform:translateY(22px);opacity:0}}
+
+.toast{
+  position:absolute;z-index:30;
+  left:50%;top:calc(var(--safe-t) + 96px);transform:translateX(-50%);
+  padding:10px 16px;border-radius:999px;
+  background:rgba(11,16,14,.94);border:1px solid rgba(201,162,39,.35);
+  font-size:13px;font-weight:600;white-space:nowrap;
+  box-shadow:0 8px 22px rgba(0,0,0,.5);
+  animation:toastIn .22s ease;
+}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px)}}
+
+/* ------------------------------------------------ landscape */
+
+@media (orientation:landscape){
+  .menu-inner{padding-top:16px;padding-bottom:16px}
+  #topbar{height:44px}
+  #balls{display:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+
+/* ------------------------------------------------ arcade adaptations */
+
+/* The hub's floating Menu button sits top-left over this iframe. Shifting the
+   topbar's contents right keeps both reachable without stealing table height.
+   Only applies when embedded, so the folder still works standalone. */
+:root[data-arcade] #topbar{padding-left:120px}
+:root[data-arcade] .menu-inner{padding-top:64px}
+
+/* boot diagnostics */
+#boot{
+  position:fixed;inset:0;z-index:60;
+  display:flex;flex-direction:column;justify-content:center;gap:10px;
+  padding:70px 22px 22px;background:var(--hall);
+}
+#boot h2{font-family:var(--display);font-size:26px;font-weight:400}
+#boot p{font-size:13.5px;line-height:1.6;color:var(--mute)}
+#boot code{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.92em;color:var(--brass)}
+
+/* The panel above sets display:flex, which outranks the browser's built-in
+   [hidden] rule. Without this it can never be hidden. */
+#boot[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ============ MENU ============ -->
+<section id="menu" class="screen">
+  <div class="menu-inner">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="cue-ball"></span>
+        <span class="eight-ball"></span>
+      </div>
+      <h1>Break</h1>
+      <p class="brand-sub">Eight&#8209;ball, on the felt, offline.</p>
+    </header>
+
+    <div class="menu-block">
+      <span class="eyebrow">Choose a table</span>
+      <button class="mode-card" data-mode="pvp">
+        <span class="mode-name">Two players</span>
+        <span class="mode-note">Pass the phone between shots</span>
+      </button>
+      <button class="mode-card" data-mode="ai">
+        <span class="mode-name">You vs. the computer</span>
+        <span class="mode-note">Pick how hard it plays</span>
+      </button>
+    </div>
+
+    <div class="menu-block" id="diffBlock" hidden>
+      <span class="eyebrow">How hard it plays</span>
+      <div class="seg" role="group" aria-label="Difficulty">
+        <button class="seg-btn" data-diff="easy">Easy</button>
+        <button class="seg-btn is-on" data-diff="medium">Medium</button>
+        <button class="seg-btn" data-diff="hard">Hard</button>
+      </div>
+      <p class="diff-note" id="diffNote">Sinks what it sees, misjudges pace now and then, reads a bounce off one cushion.</p>
+    </div>
+
+    <button id="startBtn" class="primary">Rack them up</button>
+    <button id="resumeBtn" class="ghost" hidden>Resume last game</button>
+
+    <p class="tiny">Add to Home Screen for a full-screen table. Works with no signal.</p>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game" class="screen" hidden>
+
+  <header id="topbar">
+    <div class="status">
+      <span class="eyebrow" id="matchLabel">Two players</span>
+      <span class="turn" id="turnLabel">Player 1 to break</span>
+    </div>
+    <button id="menuBtn" class="icon-btn" aria-label="Main menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <button id="newBtn" class="icon-btn" aria-label="New game">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+    </button>
+  </header>
+
+  <div id="stage">
+    <canvas id="table" aria-label="Pool table"></canvas>
+    <div id="hint" class="hint"></div>
+
+    <div id="side">
+      <div id="balls" aria-label="Balls potted"></div>
+
+      <div id="aimPad">
+        <button class="nudge" id="aimLeft" aria-label="Aim left">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="nudge" id="aimRight" aria-label="Aim right">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <aside id="power" role="slider" aria-label="Shot power" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+        <div class="power-track">
+          <div class="power-fill" id="powerFill"></div>
+          <div class="power-grip" id="powerGrip"><span></span><span></span><span></span></div>
+        </div>
+        <div class="power-read"><b id="powerVal">0</b></div>
+      </aside>
+
+      <button id="strike" class="strike-btn">Strike</button>
+      <button id="resetShot" class="pill">Reset</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESULT ============ -->
+<div id="over" class="sheet" hidden>
+  <div class="sheet-card">
+    <span class="eyebrow" id="overEyebrow">Game over</span>
+    <h2 id="overTitle">Player 1 wins</h2>
+    <p id="overBody">The eight dropped in the called pocket.</p>
+    <button class="primary" id="againBtn">Rack them up again</button>
+    <button class="ghost" id="overMenuBtn">Main menu</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script>
+// Arcade bridge. This game is dark-only by design, so there is no theme to sync;
+// it just flags that it is embedded and reports a failed boot.
+(function () {
+  if (window.parent !== window) document.documentElement.setAttribute('data-arcade', '');
+  function fail(why) {
+    var box = document.getElementById('boot');
+    if (!box || !box.hidden) return;
+    document.getElementById('boot-why').textContent = why;
+    box.hidden = false;
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT') fail('script.js could not be loaded \u2014 the file is missing (404).');
+  }, true);
+  setTimeout(function () {
+    if (!window.__booted) fail('script.js loaded but never finished starting.');
+  }, 1500);
+})();
+</script>
+
+<div id="boot" hidden>
+  <h2>Break didn’t start</h2>
+  <p id="boot-why"></p>
+  <p>Expected <code>script.js</code> and <code>styles.css</code> in the same folder as this file.</p>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
