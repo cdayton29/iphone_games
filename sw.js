@@ -168,3 +168,4 @@ self.addEventListener('message', (event) => {
   if (type === 'SKIP_WAITING') self.skipWaiting();
   if (type === 'VERSION') event.ports[0]?.postMessage({ cacheName: CACHE_NAME });
 });
+
