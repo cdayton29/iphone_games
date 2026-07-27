@@ -31,6 +31,18 @@
       "assets": [
         "games/2048/styles.css"
       ]
+    },
+    {
+      "id": "8ball",
+      "title": "Break",
+      "subtitle": "Eight-ball, solo or pass-and-play",
+      "icon": "games/8ball/icon.png",
+      "path": "games/8ball/",
+      "accent": "#C9A227",
+      "glyph": "8",
+      "assets": [
+        "games/8ball/styles.css"
+      ]
     }
   ]
 }
