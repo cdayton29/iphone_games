@@ -3,12 +3,14 @@
     {
       "id": "solitaire",
       "title": "Solitaire",
-      "subtitle": "Klondike, draw one",
+      "subtitle": "Klondike, draw one or three",
       "icon": "games/solitaire/icon.png",
       "path": "games/solitaire/",
-      "accent": "#E85D5D",
-      "assets": [],
-      "glyph": "♥"
+      "accent": "#E8C86A",
+      "assets": [
+        "games/solitaire/styles.css"
+      ],
+      "glyph": "♠"
     },
     {
       "id": "sudoku",
