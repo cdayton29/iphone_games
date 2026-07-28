@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Chess</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<style>
+/* Inlined so there is no separate styles.css to misplace. */
+:root {
+  --bg: #10131F; --panel: #1A1F35; --panel-2: #232A44;
+  --edge: rgba(255,255,255,.09);
+  --ink: #ECEEF6; --muted: #8A92AE;
+  --amber: #FFB020; --mint: #5FD6A9; --wrong: #E85D5D;
+
+  /* a board is a board — these hold in both themes */
+  --sq-light: #E8E1D0;
+  --sq-dark:  #46527A;
+  --pc-w: #FDFBF6;
+  --pc-b: #1B2032;
+
+  --display: Futura, "Avenir Next Condensed", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --board: 320px;
+  --edge-gap: 10px;
+}
+html[data-theme="light"] {
+  --bg: #E9ECF3; --panel: #FFFFFF; --panel-2: #F2F4F9;
+  --edge: rgba(16,19,31,.12);
+  --ink: #171B2C; --muted: #5E6577;
+  --amber: #C97A00; --mint: #17916A; --wrong: #C7382F;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%; -webkit-touch-callout: none;
+  -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+button { font: inherit; color: inherit; background: none; border: 0; }
+[hidden] { display: none !important; }
+
+body { display: flex; flex-direction: column; padding: var(--safe-t) 0 var(--safe-b); }
+
+/* ---- status bar: left inset clears the hub's Menu button ---- */
+#bar {
+  flex: none; height: 52px; display: flex; align-items: center; gap: 6px;
+  padding: 0 var(--edge-gap) 0 122px;
+}
+#bar .stat { margin-right: auto; min-width: 0; line-height: 1.25; }
+#bar .stat b {
+  display: block; font-family: var(--display); font-size: 13px;
+  letter-spacing: .08em; text-transform: uppercase; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#bar .stat span {
+  display: block; font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+#bar button {
+  height: 32px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid var(--edge); background: var(--panel);
+  font-family: var(--display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+}
+#bar button:active { background: var(--panel-2); }
+#bar button:disabled { opacity: .35; }
+
+/* ---- captured strips ---- */
+.cap {
+  flex: none; height: 26px; padding: 0 var(--edge-gap);
+  font-size: 19px; line-height: 26px; letter-spacing: -1px;
+  white-space: nowrap; overflow: hidden;
+}
+.cap.w { color: var(--pc-w); -webkit-text-stroke: .7px rgba(20,24,40,.6); }
+.cap.b { color: var(--pc-b); -webkit-text-stroke: .7px rgba(240,242,250,.45); }
+
+/* ---- board ---- */
+#board-wrap { flex: 1; display: grid; place-items: center; padding: 4px var(--edge-gap); min-height: 0; }
+#board {
+  width: var(--board); height: var(--board);
+  max-width: 100%;
+  display: grid;
+  /* Both axes must be explicit. With rows left implicit they size to their
+     content, so ranks holding pieces come out taller than empty ones. */
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  border-radius: 8px; overflow: hidden;
+  box-shadow: 0 14px 34px rgba(0,0,0,.42), 0 0 0 1px rgba(0,0,0,.35);
+}
+.sqr {
+  position: relative; display: grid; place-items: center;
+  min-width: 0; min-height: 0;          /* never let a glyph stretch its track */
+  background: var(--sq-light);
+}
+.sqr.dark { background: var(--sq-dark); }
+.sqr::before { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.sqr.last::before { background: rgba(255,176,32,.22); }
+.sqr.check::before { background: radial-gradient(circle, rgba(232,93,93,.8) 20%, transparent 72%); }
+.sqr.sel { box-shadow: inset 0 0 0 3px var(--amber); }
+.sqr.move::after {
+  content: ""; position: absolute; width: 26%; height: 26%;
+  border-radius: 50%; background: rgba(95,214,169,.7);
+}
+.sqr.take::after {
+  content: ""; position: absolute; inset: 7%;
+  border-radius: 50%; border: 3px solid rgba(95,214,169,.85);
+}
+.pc {
+  position: relative; z-index: 1;
+  font-size: calc(var(--board) / 8 * .78); line-height: 1;
+}
+.pc.w { color: var(--pc-w); -webkit-text-stroke: 1.1px #2A3049; }
+.pc.b { color: var(--pc-b); -webkit-text-stroke: 1.1px rgba(240,242,250,.5); }
+
+/* ---- sheets ---- */
+.sheet {
+  position: fixed; inset: 0; z-index: 9; display: grid; place-items: center;
+  background: rgba(8,10,18,.66);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  padding: 24px;
+}
+.sheet .panel {
+  width: 100%; max-width: 320px; text-align: center;
+  padding: 24px 22px; border-radius: 22px;
+  background: var(--panel); border: 1px solid var(--edge);
+  box-shadow: 0 18px 40px rgba(0,0,0,.5);
+}
+.sheet h2 {
+  margin: 0 0 4px; font-family: var(--display); font-size: 22px;
+  letter-spacing: .14em; text-transform: uppercase; font-weight: 600;
+}
+.sheet p {
+  margin: 0 0 16px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.choices { display: grid; gap: 8px; }
+.choices button {
+  height: 46px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--edge);
+  font-family: var(--display); font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+}
+.choices button:active { background: var(--amber); color: #10131F; }
+.choices button span { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+.choices button:active span { color: #10131F; }
+.ghost-btn {
+  margin-top: 14px; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+
+/* ---- promotion ---- */
+#promo-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.promo-pick {
+  height: 62px; border-radius: 14px;
+  background: var(--sq-light); border: 1px solid var(--edge);
+  font-size: 34px; line-height: 1;
+}
+.promo-pick.w { color: var(--pc-w); -webkit-text-stroke: 1.1px #2A3049; }
+.promo-pick.b { color: var(--pc-b); }
+.promo-pick:active { background: var(--amber); }
+
+/* ---- boot diagnostics ---- */
+#boot {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; justify-content: center; gap: 10px;
+  padding: calc(var(--safe-t) + 60px) 22px 22px;
+  background: var(--bg);
+}
+#boot[hidden] { display: none !important; }
+#boot h2 {
+  margin: 0; font-family: var(--display); font-size: 20px;
+  letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+}
+#boot p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+#boot code { font-family: var(--mono); font-size: .92em; color: var(--amber); }
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <div class="stat"><b id="turn">White to move</b><span id="note">pass and play</span></div>
+  <button id="btn-undo" type="button">Undo</button>
+  <button id="btn-flip" type="button">Flip</button>
+  <button id="btn-new" type="button">New</button>
+</div>
+
+<div id="cap-top" class="cap b"></div>
+<div id="board-wrap"><div id="board" role="grid" aria-label="Chess board"></div></div>
+<div id="cap-bot" class="cap w"></div>
+
+<div id="menu" class="sheet" hidden>
+  <div class="panel">
+    <h2>New game</h2>
+    <p>Full rules, castling and all</p>
+    <div class="choices">
+      <button type="button" data-mode="pvp">Two players <span>pass and play</span></button>
+      <button type="button" data-mode="ai" data-level="easy">Computer <span>easy</span></button>
+      <button type="button" data-mode="ai" data-level="medium">Computer <span>medium</span></button>
+      <button type="button" data-mode="ai" data-level="hard">Computer <span>hard</span></button>
+    </div>
+    <button id="btn-resume" class="ghost-btn" type="button" hidden>Resume last game</button>
+    <button id="menu-cancel" class="ghost-btn" type="button">Keep playing</button>
+  </div>
+</div>
+
+<div id="promo" class="sheet" hidden>
+  <div class="panel">
+    <h2>Promote</h2>
+    <p>Choose a piece</p>
+    <div id="promo-row"></div>
+    <button id="promo-cancel" class="ghost-btn" type="button">Cancel</button>
+  </div>
+</div>
+
+<div id="over" class="sheet" hidden>
+  <div class="panel">
+    <h2 id="over-title">Draw</h2>
+    <p id="over-note">Stalemate</p>
+    <div class="choices"><button id="btn-again" type="button">New game <span>choose sides</span></button></div>
+  </div>
+</div>
+
+<div id="boot" hidden>
+  <h2>Chess didn't start</h2>
+  <p id="boot-why"></p>
+  <p>Expected <code>script.js</code> in the same folder as this file.</p>
+</div>
+
+<script>
+// Runs before script.js so it can catch a missing or broken script.
+(function () {
+  function fail(why) {
+    var box = document.getElementById('boot');
+    if (!box || !box.hidden) return;
+    document.getElementById('boot-why').textContent = why;
+    box.hidden = false;
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT') fail('script.js could not be loaded \u2014 the file is missing (404).');
+    else fail(e.message || 'A script error stopped it.');
+  }, true);
+  setTimeout(function () {
+    if (!window.__booted) fail('script.js loaded but never finished starting.');
+  }, 1500);
+})();
+</script>
+
+<script src="script.js"></script>
+</body>
+</html>
