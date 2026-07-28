@@ -1080,6 +1080,13 @@ function handValid(x, y) {
    ========================================================================= */
 
 let dragging = false, dragMoved = false, dragStart = null;
+let handGrab = false, handHome = null;
+
+/* Keep a dragged cue ball on the cloth while the finger is down. */
+function clampHand(b, p) {
+  b.x = Math.max(R + 1, Math.min(PW - R - 1, p.x));
+  b.y = Math.max(R + 1, Math.min(PH - R - 1, p.y));
+}
 
 function canvasPoint(e) {
   const r = cv.getBoundingClientRect();
@@ -1099,7 +1106,15 @@ cv.addEventListener('pointerdown', e => {
   dragStart = p;
 
   if (G.phase === 'hand') {
-    G.balls[0].x = p.x; G.balls[0].y = p.y;
+    // The ball has to be picked up, not teleported: the touch must land on it.
+    const cue = G.balls[0];
+    if (Math.hypot(p.x - cue.x, p.y - cue.y) > R * 3) {
+      dragging = false;
+      toast('Drag the cue ball itself');
+      return;
+    }
+    handGrab = true;
+    handHome = { x: cue.x, y: cue.y };
   } else if (G.phase === 'aim') {
     aimAt(p);
   }
@@ -1110,7 +1125,7 @@ cv.addEventListener('pointermove', e => {
   e.preventDefault();
   const p = canvasPoint(e);
   if (Math.hypot(p.x - dragStart.x, p.y - dragStart.y) > 6) dragMoved = true;
-  if (G.phase === 'hand') { G.balls[0].x = p.x; G.balls[0].y = p.y; }
+  if (G.phase === 'hand') { if (handGrab) clampHand(G.balls[0], p); }
   else if (G.phase === 'aim') aimAt(p);
 });
 
@@ -1120,11 +1135,15 @@ cv.addEventListener('pointerup', e => {
   const p = canvasPoint(e);
 
   if (G.phase === 'hand') {
-    if (handValid(p.x, p.y)) {
-      G.balls[0].x = p.x; G.balls[0].y = p.y;
+    if (!handGrab) return;
+    handGrab = false;
+
+    const cue = G.balls[0];
+    if (handValid(cue.x, cue.y)) {
       G.phase = 'aim';
       syncUI(); save();
     } else {
+      cue.x = handHome.x; cue.y = handHome.y;   // no legal spot: put it back
       toast('Not there — pick clear felt');
     }
     return;
@@ -1143,7 +1162,13 @@ cv.addEventListener('pointerup', e => {
   }
 });
 
-cv.addEventListener('pointercancel', () => { dragging = false; });
+cv.addEventListener('pointercancel', () => {
+  dragging = false;
+  if (handGrab && handHome) {
+    G.balls[0].x = handHome.x; G.balls[0].y = handHome.y;
+    handGrab = false;
+  }
+});
 
 function aimAt(p) {
   const cue = G.balls[0];
@@ -1176,9 +1201,8 @@ powerEl.addEventListener('pointermove', e => {
   setPower(powerFromEvent(e));
 });
 powerEl.addEventListener('pointerup', () => {
-  if (!powerDrag) return;
+  // Setting power no longer plays the shot — Strike does that.
   powerDrag = false;
-  if (G.phase === 'aim' && humanTurn() && G.power >= 5) fire(G.aim, G.power);
 });
 powerEl.addEventListener('pointercancel', () => { powerDrag = false; });
 
@@ -1190,7 +1214,7 @@ function setPower(v) {
 function paintPower() {
   const p = Math.round(G.power);
   fillEl.style.height = p + '%';
-  gripEl.style.bottom = 'calc(' + p + '% - 28px)';
+  gripEl.style.bottom = 'calc(' + p + '% - 22px)';
   valEl.textContent = p;
   powerEl.setAttribute('aria-valuenow', p);
 }
@@ -1407,9 +1431,9 @@ function syncUI() {
     .forEach(s => { $(s).disabled = !canAct; });
   $('#strike').disabled = !canAct || (needsCall() && G.called === null);
 
-  if (G.phase === 'hand' && humanTurn()) showHint('Drag the cue ball onto clear felt');
+  if (G.phase === 'hand' && humanTurn()) showHint('Pick the cue ball up and drag it');
   else if (canAct && needsCall() && G.called === null) showHint('Tap a pocket to call the eight');
-  else if (canAct && !G.broken) showHint('Drag to aim · pull the slider to strike');
+  else if (canAct && !G.broken) showHint('Drag to aim · set power · Strike');
   else showHint('');
 
   paintPower();
