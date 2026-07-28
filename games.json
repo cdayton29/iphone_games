@@ -7,9 +7,7 @@
       "icon": "games/solitaire/icon.png",
       "path": "games/solitaire/",
       "accent": "#E8C86A",
-      "assets": [
-        "games/solitaire/styles.css"
-      ],
+      "assets": [],
       "glyph": "♠"
     },
     {
@@ -30,9 +28,7 @@
       "path": "games/2048/",
       "accent": "#C22E86",
       "glyph": "2",
-      "assets": [
-        "games/2048/styles.css"
-      ]
+      "assets": []
     },
     {
       "id": "8ball",
@@ -42,9 +38,17 @@
       "path": "games/8ball/",
       "accent": "#C9A227",
       "glyph": "8",
-      "assets": [
-        "games/8ball/styles.css"
-      ]
+      "assets": []
+    },
+    {
+      "id": "chess",
+      "title": "Chess",
+      "subtitle": "Full rules, a friend or the computer",
+      "icon": "games/chess/icon.png",
+      "path": "games/chess/",
+      "accent": "#E8E1D0",
+      "glyph": "♞",
+      "assets": []
     }
   ]
 }
