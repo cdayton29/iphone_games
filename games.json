@@ -49,6 +49,16 @@
       "accent": "#E8E1D0",
       "glyph": "♞",
       "assets": []
+    },
+    {
+      "id": "Tetris",
+      "title": "Tetris",
+      "subtitle": "Block drop, hold and ghost piece",
+      "icon": "games/cascade/icon.png",
+      "path": "games/cascade/",
+      "accent": "#22D3EE",
+      "glyph": "▦",
+      "assets": []
     }
   ]
 }
