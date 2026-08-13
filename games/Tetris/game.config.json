@@ -1,0 +1,71 @@
+{
+  "$comment": "Registration descriptor for an arcade shell. game.js reads the settings block at boot; everything else is metadata the shell can use to build its menu. Every key in settings is optional — the engine has working defaults for all of them.",
+
+  "schema": "arcade-game/1",
+  "id": "cascade",
+  "title": "Cascade",
+  "tagline": "Block drop, offline",
+  "version": "1.0.0",
+  "engine": "vanilla",
+
+  "entry": {
+    "html": "./index.html",
+    "script": "./game.js",
+    "global": "CascadeGame",
+    "factory": "create",
+    "boot": "boot",
+    "mountSelector": "[data-cascade-host]"
+  },
+
+  "assets": [
+    "./index.html",
+    "./style.css",
+    "./game.js",
+    "./manifest.json",
+    "./game.config.json",
+    "./icon.svg",
+    "./icon-192.png",
+    "./apple-touch-icon.png",
+    "./icon-512.png",
+    "./icon-maskable-512.png"
+  ],
+
+  "capabilities": {
+    "offline": true,
+    "touch": true,
+    "keyboard": true,
+    "gamepad": false,
+    "pause": true,
+    "resume": true,
+    "destroy": true,
+    "orientation": "portrait"
+  },
+
+  "events": [
+    "ready",
+    "start",
+    "pause",
+    "resume",
+    "score",
+    "lineclear",
+    "levelup",
+    "gameover",
+    "destroy"
+  ],
+
+  "settings": {
+    "cols": 10,
+    "rows": 20,
+    "nextCount": 3,
+    "startLevel": 1,
+    "das": 165,
+    "arr": 45,
+    "softDropFactor": 20,
+    "lockDelay": 500,
+    "maxLockResets": 15,
+    "clearFlashMs": 170,
+    "dangerRows": 4,
+    "sound": true,
+    "storageKey": "cascade.best.v1"
+  }
+}

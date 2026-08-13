@@ -1,0 +1,346 @@
+/* ============================================================
+   Cascade — design tokens
+   The chrome stays neutral on purpose: the only saturated colour
+   in the interface comes from the piece currently in play, which
+   game.js writes into --accent on every spawn.
+   ============================================================ */
+:root {
+  /* surface */
+  --bg:        #080b12;
+  --bg-deep:   #05070c;
+  --panel:     #101725;
+  --panel-hi:  #16203285;
+  --line:      #1e2a3f;
+  --well:      #0b111c;
+
+  /* ink */
+  --ink:       #e8eef9;
+  --ink-dim:   #8a99b5;
+  --ink-faint: #48566f;
+
+  /* signal */
+  --accent:    #6ee7ff;              /* live: colour of the active piece */
+  --danger:    #ff4d5e;
+
+  /* piece palette — mirrored in game.js PIECES */
+  --p-i: #22d3ee;  --p-o: #fbbf24;  --p-t: #b06cf0;
+  --p-s: #34d06a;  --p-z: #f2555f;  --p-j: #4b7bff;  --p-l: #ff8a3d;
+
+  /* type */
+  --font-data: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --font-ui:   system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* metrics */
+  --gap: 10px;
+  --radius: 12px;
+  --pad-h: clamp(10px, 3.2vw, 20px);
+
+  /* safe areas, with a zero fallback for browsers without env() */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  /* No page-level gestures: no pinch zoom, no double-tap zoom, no swipe-back. */
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ---------- app frame ---------- */
+.app {
+  /* --app-h is written by game.js from visualViewport, so URL bars and
+     on-screen keyboards can't push the pad off the bottom. */
+  height: var(--app-h, 100dvh);
+  height: var(--app-h, 100vh);
+  width: 100%;
+  max-width: 560px;
+  margin-inline: auto;
+  padding:
+    calc(var(--sat) + 8px)
+    calc(var(--sar) + var(--pad-h))
+    calc(var(--sab) + 8px)
+    calc(var(--sal) + var(--pad-h));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--gap);
+  background:
+    radial-gradient(120% 80% at 50% -10%, #101a2c 0%, transparent 60%),
+    var(--bg);
+}
+
+.label {
+  font-family: var(--font-data);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---------- readout ---------- */
+.readout {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.readout__score { display: grid; gap: 1px; }
+
+.score {
+  font-family: var(--font-data);
+  font-size: clamp(26px, 8vw, 38px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: text-shadow 240ms ease;
+}
+
+.readout__meta {
+  display: flex;
+  gap: clamp(12px, 4vw, 22px);
+  margin: 0;
+  text-align: right;
+}
+.readout__meta div { display: grid; gap: 2px; }
+.readout__meta dt { margin: 0; }
+.readout__meta dd {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+/* ---------- hold / next tray ---------- */
+.tray {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.tray__group { display: grid; gap: 5px; justify-items: start; }
+.tray__group--next { flex: 1; }
+.tray__queue { display: flex; gap: 6px; }
+
+.mini {
+  display: block;
+  width: 46px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--well);
+}
+#hold { width: 52px; height: 38px; }
+#hold[data-locked="true"] { opacity: 0.35; }
+
+.tray__tools { display: flex; gap: 6px; margin-left: auto; align-self: flex-end; }
+
+.tool {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink-dim);
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: none;
+}
+.tool:active { background: var(--panel-hi); color: var(--ink); }
+.tool[aria-pressed="false"] { color: var(--ink-faint); opacity: 0.55; }
+
+/* ---------- playfield ---------- */
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+}
+
+#board {
+  display: block;
+  border-radius: var(--radius);
+  background: var(--well);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 0 44px -12px color-mix(in srgb, var(--accent) 60%, transparent),
+    0 18px 40px -20px #000;
+  transition: box-shadow 300ms ease;
+}
+/* Stack is creeping toward the ceiling. */
+.stage[data-danger="true"] #board {
+  box-shadow:
+    0 0 0 1px var(--danger),
+    0 0 52px -10px color-mix(in srgb, var(--danger) 70%, transparent),
+    0 18px 40px -20px #000;
+}
+
+/* ---------- veil (ready / paused / over) ---------- */
+.veil {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px;
+  text-align: center;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-deep) 86%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  transition: opacity 180ms ease;
+}
+.veil[hidden] { display: none; }
+
+.veil__eyebrow { margin: 0 0 2px; }
+
+.veil__title {
+  margin: 0;
+  font-family: var(--font-data);
+  font-size: clamp(28px, 9vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.veil__body {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+}
+.veil__action {
+  margin-top: 14px;
+  padding: 13px 34px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #05070c;
+  font-family: var(--font-data);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  touch-action: none;
+}
+.veil__action:active { transform: scale(0.97); }
+.veil__hint {
+  margin: 10px 0 0;
+  max-width: 34ch;
+  font-family: var(--font-data);
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--ink-faint);
+}
+@media (pointer: coarse) { .veil__hint { display: none; } }
+
+/* ---------- touch pad ---------- */
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  touch-action: none;
+}
+
+.pad__btn {
+  position: relative;
+  height: clamp(52px, 8.4vh, 74px);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(#141d2e, #0d1421);
+  color: var(--ink);
+  font-family: var(--font-data);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background 90ms ease, border-color 90ms ease, transform 90ms ease;
+}
+.pad__glyph { font-size: 21px; line-height: 1; }
+.pad__tag {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.pad__btn[data-pressed="true"] {
+  background: linear-gradient(#1d2b44, #16213a);
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--line));
+  transform: translateY(1px);
+}
+.pad__btn[data-action="hardDrop"][data-pressed="true"] { border-color: var(--accent); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--sab) + 16px);
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font-data);
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 20;
+}
+.toast[hidden] { display: none; }
+.toast button {
+  margin-left: 10px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- a11y & motion ---------- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Short landscape phones: shrink the tray so the well keeps its height. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app { max-width: 100%; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  .score { font-size: 22px; }
+  .mini { width: 38px; height: 28px; }
+  #hold { width: 42px; height: 30px; }
+  .pad__btn { height: 46px; }
+  .pad__tag { display: none; }
+}

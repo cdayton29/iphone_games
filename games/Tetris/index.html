@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Cascade — block drop</title>
+<meta name="description" content="A fast, offline block-drop puzzle. Install it and play with no connection.">
+<meta name="theme-color" content="#080B12">
+<meta name="color-scheme" content="dark">
+
+<!-- iOS standalone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cascade">
+
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+<!-- Mount point. The game engine attaches here; an arcade shell can pass a
+     different root element to BlockGame.create({ root }) instead. -->
+<div id="app" class="app" data-cascade-host>
+
+  <header class="readout">
+    <div class="readout__score">
+      <span class="label">Score</span>
+      <output class="score" id="score" aria-live="polite">0</output>
+    </div>
+    <dl class="readout__meta">
+      <div><dt class="label">Level</dt><dd id="level">1</dd></div>
+      <div><dt class="label">Lines</dt><dd id="lines">0</dd></div>
+      <div><dt class="label">Best</dt><dd id="best">0</dd></div>
+    </dl>
+  </header>
+
+  <section class="tray" aria-label="Piece queues">
+    <div class="tray__group">
+      <span class="label">Hold</span>
+      <canvas class="mini" id="hold" aria-label="Held piece"></canvas>
+    </div>
+
+    <div class="tray__group tray__group--next">
+      <span class="label">Next</span>
+      <div class="tray__queue">
+        <canvas class="mini" data-next="0" aria-label="Next piece"></canvas>
+        <canvas class="mini" data-next="1" aria-label="Second piece"></canvas>
+        <canvas class="mini" data-next="2" aria-label="Third piece"></canvas>
+      </div>
+    </div>
+
+    <div class="tray__tools">
+      <button class="tool" id="sound" type="button" aria-pressed="true" aria-label="Sound on">
+        <span aria-hidden="true">♪</span>
+      </button>
+      <button class="tool" id="pause" type="button" aria-label="Pause">
+        <span aria-hidden="true">❙❙</span>
+      </button>
+    </div>
+  </section>
+
+  <main class="stage" id="stage">
+    <canvas id="board" width="10" height="20" aria-label="Playfield"></canvas>
+
+    <div class="veil" id="veil" role="dialog" aria-modal="true">
+      <p class="veil__eyebrow label" id="veil-eyebrow">Ready</p>
+      <h1 class="veil__title" id="veil-title">Cascade</h1>
+      <p class="veil__body" id="veil-body">Clear lines to climb levels. Everything runs offline.</p>
+      <button class="veil__action" id="veil-action" type="button">Play</button>
+      <p class="veil__hint" id="veil-hint">Keyboard: ← → move · ↑ rotate · space hard drop · C hold · P pause</p>
+    </div>
+  </main>
+
+  <!-- Touch pad. Every button is a plain <button> so it stays keyboard and
+       screen-reader reachable; pointer handling lives in game.js. -->
+  <nav class="pad" id="pad" aria-label="Game controls">
+    <button class="pad__btn" data-action="hold" type="button" aria-label="Hold piece">
+      <span class="pad__glyph" aria-hidden="true">⇄</span><span class="pad__tag">Hold</span>
+    </button>
+    <button class="pad__btn" data-action="hardDrop" type="button" aria-label="Hard drop">
+      <span class="pad__glyph" aria-hidden="true">⤓</span><span class="pad__tag">Drop</span>
+    </button>
+    <button class="pad__btn" data-action="rotateCW" type="button" aria-label="Rotate clockwise">
+      <span class="pad__glyph" aria-hidden="true">⟳</span><span class="pad__tag">Rotate</span>
+    </button>
+    <button class="pad__btn" data-action="left" type="button" aria-label="Move left">
+      <span class="pad__glyph" aria-hidden="true">◀</span>
+    </button>
+    <button class="pad__btn" data-action="softDrop" type="button" aria-label="Soft drop">
+      <span class="pad__glyph" aria-hidden="true">▼</span>
+    </button>
+    <button class="pad__btn" data-action="right" type="button" aria-label="Move right">
+      <span class="pad__glyph" aria-hidden="true">▶</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script src="./game.js" defer></script>
+</body>
+</html>

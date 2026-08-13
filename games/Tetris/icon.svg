@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Cascade">
+  <rect width="512" height="512" rx="112" fill="#080b12"/>
+  <g>
+    <rect x="72" y="72" width="120" height="120" rx="26" fill="#22d3ee"/>
+    <rect x="91" y="88" width="82" height="14" rx="7" fill="#ffffff" opacity="0.45"/>
+
+    <rect x="196" y="196" width="120" height="120" rx="26" fill="#b06cf0"/>
+    <rect x="215" y="212" width="82" height="14" rx="7" fill="#ffffff" opacity="0.45"/>
+
+    <rect x="320" y="320" width="120" height="120" rx="26" fill="#fbbf24"/>
+    <rect x="339" y="336" width="82" height="14" rx="7" fill="#ffffff" opacity="0.45"/>
+  </g>
+</svg>
