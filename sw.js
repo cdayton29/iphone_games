@@ -3,9 +3,15 @@
 
    Bump CACHE_NAME whenever you add a game or change any file.
    That single edit is what tells iOS to pull the new assets down.
+
+   Large payloads (a WASM engine, say) live in a second cache that a
+   CACHE_NAME bump does NOT clear, so adding a small game never forces a
+   multi-megabyte re-download. Those are listed per game under "bulk" in
+   games.json. Bump BULK_NAME only when one of those files itself changes.
    =========================================================== */
 
-const CACHE_NAME = 'arcade-v19';
+const CACHE_NAME = 'arcade-v18';
+const BULK_NAME  = 'arcade-bulk-v1';
 
 /** Resolve relative to the worker, so project subpaths (GitHub Pages) work. */
 const url = (path) => new URL(path, self.location).toString();
@@ -54,6 +60,35 @@ async function gameAssets() {
   return out;
 }
 
+/** The heavyweight files, which live in the cache that survives a bump. */
+async function bulkAssets() {
+  const res = await fetch(url('./games.json'), { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`games.json returned ${res.status}`);
+
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : Array.isArray(data.games) ? data.games : [];
+  const out = [];
+
+  for (const game of list) {
+    for (const big of (game && game.bulk) || []) {
+      out.push(/^https?:/i.test(big) ? big : url(big));
+    }
+  }
+  return out;
+}
+
+/** Only fetch a bulk file we do not already hold — these are expensive. */
+async function cacheBulk(cache, urls) {
+  for (const u of [...new Set(urls)]) {
+    if (await cache.match(u, { ignoreSearch: true })) continue;
+    try {
+      await cache.add(new Request(u, { cache: 'reload' }));
+    } catch (err) {
+      console.warn('[sw] bulk asset skipped', u, err.message || '');
+    }
+  }
+}
+
 /** Cache one by one so a single 404 cannot fail the whole install. */
 async function cacheAll(cache, urls) {
   const unique = [...new Set(urls)];
@@ -72,6 +107,7 @@ self.addEventListener('install', (event) => {
 
     try {
       await cacheAll(cache, await gameAssets());
+      await cacheBulk(await caches.open(BULK_NAME), await bulkAssets());
     } catch (err) {
       console.warn('[sw] registry unreadable, hub cached alone:', err.message);
     }
@@ -87,7 +123,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)));
+    const keep = new Set([CACHE_NAME, BULK_NAME]);
+    await Promise.all(names.filter((n) => !keep.has(n)).map((n) => caches.delete(n)));
     await self.clients.claim();
   })());
 });
@@ -134,6 +171,13 @@ async function networkFirst(req) {
 }
 
 async function cacheFirst(req, fallbackUrl) {
+  // A bulk hit is served as-is and never revalidated: these files are many
+  // megabytes, and re-fetching one in the background on every open would
+  // quietly burn the data the offline cache exists to save.
+  const bulk = await caches.open(BULK_NAME);
+  const bulkHit = await bulk.match(req, { ignoreSearch: true });
+  if (bulkHit) return bulkHit;
+
   const cache = await caches.open(CACHE_NAME);
   const hit = await cache.match(req, { ignoreSearch: true });
 
