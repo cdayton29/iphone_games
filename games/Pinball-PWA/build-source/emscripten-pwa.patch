@@ -1,0 +1,82 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fca48f3..0aa8ab4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -20,7 +20,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS}")
+         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
+         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS}")
+-        set(CMAKE_EXECUTABLE_SUFFIX .html)
++        set(CMAKE_EXECUTABLE_SUFFIX .js)
+ 
+         set(SDL2_FOUND TRUE)
+         set(SDL2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
+@@ -218,9 +218,9 @@ target_link_libraries(SpaceCadetPinball ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY})
+ if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+         target_link_libraries(SpaceCadetPinball idbfs.js)
+         set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
+-        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s DEMANGLE_SUPPORT=1 \
+-        --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/emscripten_shell.html \
+-        --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources --bind")
++        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=[\"callMain\",\"ccall\",\"FS\",\"IDBFS\"] -s EXPORTED_FUNCTIONS=[\"_main\",\"_web_key\"] \
++         \
++        --embed-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources -s SINGLE_FILE=1 --bind")
+ endif()
+ 
+ # On Windows, copy DLL to output
+diff --git a/SpaceCadetPinball/SpaceCadetPinball.cpp b/SpaceCadetPinball/SpaceCadetPinball.cpp
+index 565a93d..7bd4408 100644
+--- a/SpaceCadetPinball/SpaceCadetPinball.cpp
++++ b/SpaceCadetPinball/SpaceCadetPinball.cpp
+@@ -5,8 +5,15 @@
+ 
+ #include "winmain.h"
+ 
++#ifdef __EMSCRIPTEN__
++// Debian emscripten 3.1.6 drops main(argc, argv); use the no-arg form.
++int main()
++{
++	int argc = 0; char** argv = nullptr;
++#else
+ int main(int argc, char* argv[])
+ {
++#endif
+ 	{
+ 		// Testing with UI
+ 		std::string cmdLine;
+@@ -34,3 +41,35 @@ int main(int argc, char* argv[])
+ //   4. Use the Error List window to view errors
+ //   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
+ //   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++// Called from the PWA's on-screen touch controls: injects a key press/release
++// into SDL's event queue so it follows the same path as a physical keyboard.
++#include "options.h"
++// action: 0 left flipper, 1 right flipper, 2 plunger, 3 nudge left,
++//         4 nudge right, 5 nudge up, 10 new game (F2), 11 pause (F3)
++extern "C" EMSCRIPTEN_KEEPALIVE void web_key(int action, int down)
++{
++	int sdlKey;
++	switch (action)
++	{
++	case 0: sdlKey = options::Options.LeftFlipperKey; break;
++	case 1: sdlKey = options::Options.RightFlipperKey; break;
++	case 2: sdlKey = options::Options.PlungerKey; break;
++	case 3: sdlKey = options::Options.LeftTableBumpKey; break;
++	case 4: sdlKey = options::Options.RightTableBumpKey; break;
++	case 5: sdlKey = options::Options.BottomTableBumpKey; break;
++	case 10: sdlKey = SDLK_F2; break;
++	case 11: sdlKey = SDLK_F3; break;
++	default: return;
++	}
++	SDL_Event ev{};
++	ev.type = down ? SDL_KEYDOWN : SDL_KEYUP;
++	ev.key.state = down ? SDL_PRESSED : SDL_RELEASED;
++	ev.key.repeat = 0;
++	ev.key.keysym.sym = sdlKey;
++	ev.key.keysym.scancode = SDL_GetScancodeFromKey(sdlKey);
++	SDL_PushEvent(&ev);
++}
++#endif
