@@ -10,7 +10,7 @@
    games.json. Bump BULK_NAME only when one of those files itself changes.
    =========================================================== */
 
-const CACHE_NAME = 'arcade-v18';
+const CACHE_NAME = 'arcade-v19';
 const BULK_NAME  = 'arcade-bulk-v1';
 
 /** Resolve relative to the worker, so project subpaths (GitHub Pages) work. */
