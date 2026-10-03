@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Space Cadet Pinball</title>
+<meta name="description" content="3D Pinball Space Cadet, running in the browser via WebAssembly.">
+<meta name="theme-color" content="#080a26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pinball">
+<style>
+/* Inlined so there is no separate stylesheet to misplace. */
+:root { --bg:#080a26; --fg:#e8ecff; --accent:#ffaa28; --muted:#8a90c0; }
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+  font:15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow:hidden;
+  overscroll-behavior:none; touch-action:none; user-select:none; -webkit-user-select:none; }
+[hidden] { display:none !important; }
+#stage { position:fixed; inset:0; padding:env(safe-area-inset-top) env(safe-area-inset-right)
+  env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#canvas { display:block; width:100%; height:100%; outline:none; background:#000; }
+
+/* Loading / start screen */
+#splash { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:18px; background:radial-gradient(ellipse at 50% 40%, #1d1f6a, var(--bg) 70%);
+  z-index:10; text-align:center; padding:24px; }
+#splash img { width:112px; height:112px; border-radius:24px; box-shadow:0 8px 30px #0008; }
+#splash h1 { margin:0; font-size:22px; letter-spacing:.04em; }
+#bar { width:min(280px,70vw); height:6px; border-radius:3px; background:#ffffff1a; overflow:hidden; }
+#bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+#status { color:var(--muted); min-height:1.4em; }
+#play { display:none; font:inherit; font-weight:600; font-size:17px; color:#1a1030; background:var(--accent);
+  border:0; border-radius:999px; padding:12px 34px; cursor:pointer; }
+#play:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+#keys { color:var(--muted); font-size:13px; max-width:420px; }
+#keys kbd { font:inherit; color:var(--fg); background:#ffffff14; border-radius:4px; padding:0 5px; }
+
+/* Touch controls: only shown on touch devices */
+#touch { position:fixed; inset:0; z-index:5; display:none; pointer-events:none; }
+body.touch #touch { display:block; }
+.zone { position:absolute; top:44px; bottom:0; pointer-events:auto; }
+#zl { left:0; width:50%; } #zr { right:0; width:50%; }
+.btn { position:absolute; pointer-events:auto; border:1px solid #ffffff40; color:#fff;
+  background:#0008; border-radius:999px; font:600 13px system-ui, sans-serif; display:flex;
+  align-items:center; justify-content:center; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.btn.on { background:var(--accent); color:#1a1030; }
+#bLaunch { right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); width:78px; height:78px; }
+#bNudge  { right:calc(15px + env(safe-area-inset-right)); bottom:calc(100px + env(safe-area-inset-bottom)); width:72px; height:40px; }
+#bNew    { left:calc(12px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom)); width:56px; height:40px; }
+#bPause  { left:calc(76px + env(safe-area-inset-left)); bottom:calc(12px + env(safe-area-inset-bottom)); width:56px; height:40px; }
+.hint { position:absolute; top:50%; transform:translateY(-50%); color:#fff6; font:600 12px system-ui;
+  pointer-events:none; letter-spacing:.08em; transition:opacity 1s; }
+#zl .hint { left:12px; } #zr .hint { right:12px; }
+body.played .hint { opacity:0; }
+
+/* ---- arcade adaptations, embedded only so the folder still runs standalone ---- */
+
+/* The hub's floating Menu button sits in the top-left over this iframe. The
+   flipper zones start below it so a tap on Menu is never read as a flipper. */
+:root[data-arcade] .zone { top:58px; }
+:root[data-arcade] #splash { padding-top:62px; }
+
+/* boot diagnostics */
+#boot { position:fixed; inset:0; z-index:60; display:flex; flex-direction:column;
+  justify-content:center; gap:10px; padding:70px 22px 22px; background:var(--bg); }
+#boot h2 { margin:0; font-size:20px; }
+#boot p { margin:0; font-size:13.5px; line-height:1.6; color:var(--muted); }
+#boot code { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.92em; color:var(--accent); }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
+
+<div id="touch" aria-hidden="true">
+  <div class="zone" id="zl" data-a="0"><span class="hint">LEFT FLIPPER</span></div>
+  <div class="zone" id="zr" data-a="1"><span class="hint">RIGHT FLIPPER</span></div>
+  <div class="btn" id="bNew" data-a="10" data-tap>New</div>
+  <div class="btn" id="bPause" data-a="11" data-tap>Pause</div>
+  <div class="btn" id="bNudge" data-a="5">Nudge</div>
+  <div class="btn" id="bLaunch" data-a="2">Launch</div>
+</div>
+
+<div id="splash">
+  <img src="icon.png" alt="">
+  <h1>Space Cadet Pinball</h1>
+  <div id="bar"><i></i></div>
+  <div id="status">Loading game (9 MB on first run)…</div>
+  <button id="play" type="button">Play</button>
+  <div id="keys"><kbd>Z</kbd> / <kbd>/</kbd> flippers · <kbd>Space</kbd> launch · <kbd>X</kbd> <kbd>.</kbd> <kbd>↑</kbd> nudge ·
+    <kbd>F2</kbd> new game · <kbd>F3</kbd> pause. On touch screens, tap the left or right half of the screen.</div>
+</div>
+
+<div id="boot" hidden>
+  <h2>Pinball didn't start</h2>
+  <p id="boot-why"></p>
+  <p>Expected <code>script.js</code> and <code>SpaceCadetPinball.js</code> in the same folder as this file.</p>
+</div>
+
+<script>
+// Runs before script.js so it can catch a missing or broken loader.
+(function () {
+  if (window.parent !== window) document.documentElement.setAttribute('data-arcade', '');
+  function fail(why) {
+    var box = document.getElementById('boot');
+    if (!box || !box.hidden) return;
+    document.getElementById('boot-why').textContent = why;
+    box.hidden = false;
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && e.target.tagName === 'SCRIPT' && /script\.js$/.test(e.target.src || '')) {
+      fail('script.js could not be loaded — the file is missing (404).');
+    }
+  }, true);
+  setTimeout(function () {
+    if (!window.__booted) fail('script.js loaded but never finished starting.');
+  }, 1500);
+})();
+</script>
+
+<script src="script.js"></script>
+</body>
+</html>
