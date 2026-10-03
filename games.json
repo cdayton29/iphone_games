@@ -51,14 +51,27 @@
       "assets": []
     },
     {
-      "id": "Tetris",
-      "title": "Tetris",
+      "id": "cascade",
+      "title": "Cascade",
       "subtitle": "Block drop, hold and ghost piece",
       "icon": "games/cascade/icon.png",
       "path": "games/cascade/",
       "accent": "#22D3EE",
       "glyph": "▦",
       "assets": []
+    },
+    {
+      "id": "pinball",
+      "title": "Pinball",
+      "subtitle": "Space Cadet, the real one",
+      "icon": "games/pinball/icon.png",
+      "path": "games/pinball/",
+      "accent": "#FFAA28",
+      "glyph": "◉",
+      "assets": [],
+      "bulk": [
+        "games/pinball/SpaceCadetPinball.js"
+      ]
     }
   ]
 }
