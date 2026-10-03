@@ -1,0 +1,387 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fca48f3..362c41f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -20,7 +20,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS}")
+         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
+         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS}")
+-        set(CMAKE_EXECUTABLE_SUFFIX .html)
++        set(CMAKE_EXECUTABLE_SUFFIX .js)
+ 
+         set(SDL2_FOUND TRUE)
+         set(SDL2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
+@@ -218,9 +218,9 @@ target_link_libraries(SpaceCadetPinball ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY})
+ if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+         target_link_libraries(SpaceCadetPinball idbfs.js)
+         set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
+-        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s DEMANGLE_SUPPORT=1 \
+-        --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/emscripten_shell.html \
+-        --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources --bind")
++        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=[\"callMain\",\"ccall\",\"FS\",\"IDBFS\"] -s EXPORTED_FUNCTIONS=[\"_main\",\"_web_key\",\"_web_ui_state\",\"_web_set_insets\"] \
++         \
++        --embed-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources -s SINGLE_FILE=1 --bind")
+ endif()
+ 
+ # On Windows, copy DLL to output
+diff --git a/SpaceCadetPinball/SpaceCadetPinball.cpp b/SpaceCadetPinball/SpaceCadetPinball.cpp
+index 565a93d..3bb4e17 100644
+--- a/SpaceCadetPinball/SpaceCadetPinball.cpp
++++ b/SpaceCadetPinball/SpaceCadetPinball.cpp
+@@ -5,8 +5,15 @@
+ 
+ #include "winmain.h"
+ 
++#ifdef __EMSCRIPTEN__
++// Debian emscripten 3.1.6 drops main(argc, argv); use the no-arg form.
++int main()
++{
++	int argc = 0; char** argv = nullptr;
++#else
+ int main(int argc, char* argv[])
+ {
++#endif
+ 	{
+ 		// Testing with UI
+ 		std::string cmdLine;
+@@ -34,3 +41,51 @@ int main(int argc, char* argv[])
+ //   4. Use the Error List window to view errors
+ //   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
+ //   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++// Called from the PWA's on-screen touch controls: injects a key press/release
++// into SDL's event queue so it follows the same path as a physical keyboard.
++#include "options.h"
++#include "winmain.h"
++#include "imgui.h"
++#include "fullscrn.h"
++extern "C" EMSCRIPTEN_KEEPALIVE void web_set_insets(float l, float t, float r, float b)
++{
++	fullscrn::SafeInsets[0] = l; fullscrn::SafeInsets[1] = t;
++	fullscrn::SafeInsets[2] = r; fullscrn::SafeInsets[3] = b;
++}
++// bit 0: game paused, bit 1: an ImGui popup/dialog wants touch input
++extern "C" EMSCRIPTEN_KEEPALIVE int web_ui_state()
++{
++	int st = winmain::single_step ? 1 : 0;
++	if (ImGui::GetCurrentContext() && ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
++		st |= 2;
++	return st;
++}
++// action: 0 left flipper, 1 right flipper, 2 plunger, 3 nudge left,
++//         4 nudge right, 5 nudge up, 10 new game (F2), 11 pause (F3)
++extern "C" EMSCRIPTEN_KEEPALIVE void web_key(int action, int down)
++{
++	int sdlKey;
++	switch (action)
++	{
++	case 0: sdlKey = options::Options.LeftFlipperKey; break;
++	case 1: sdlKey = options::Options.RightFlipperKey; break;
++	case 2: sdlKey = options::Options.PlungerKey; break;
++	case 3: sdlKey = options::Options.LeftTableBumpKey; break;
++	case 4: sdlKey = options::Options.RightTableBumpKey; break;
++	case 5: sdlKey = options::Options.BottomTableBumpKey; break;
++	case 10: sdlKey = SDLK_F2; break;
++	case 11: sdlKey = SDLK_F3; break;
++	default: return;
++	}
++	SDL_Event ev{};
++	ev.type = down ? SDL_KEYDOWN : SDL_KEYUP;
++	ev.key.state = down ? SDL_PRESSED : SDL_RELEASED;
++	ev.key.repeat = 0;
++	ev.key.keysym.sym = sdlKey;
++	ev.key.keysym.scancode = SDL_GetScancodeFromKey(sdlKey);
++	SDL_PushEvent(&ev);
++}
++#endif
+diff --git a/SpaceCadetPinball/fullscrn.cpp b/SpaceCadetPinball/fullscrn.cpp
+index 12e18b7..9e751c7 100644
+--- a/SpaceCadetPinball/fullscrn.cpp
++++ b/SpaceCadetPinball/fullscrn.cpp
+@@ -19,6 +19,7 @@ const resolution_info fullscrn::resolution_array[3] =
+ 	{1024, 768, 960, 666, 503},
+ };
+ float fullscrn::ScaleX = 1;
++float fullscrn::SafeInsets[4]{};
+ float fullscrn::ScaleY = 1;
+ int fullscrn::OffsetX = 0;
+ int fullscrn::OffsetY = 0;
+diff --git a/SpaceCadetPinball/fullscrn.h b/SpaceCadetPinball/fullscrn.h
+index 5f4c411..c4383a2 100644
+--- a/SpaceCadetPinball/fullscrn.h
++++ b/SpaceCadetPinball/fullscrn.h
+@@ -19,6 +19,8 @@ public:
+ 	static float ScaleY;
+ 	static int OffsetX;
+ 	static int OffsetY;
++	// Screen areas to keep clear (notch, home indicator), in window pixels: left, top, right, bottom
++	static float SafeInsets[4];
+ 
+ 	static void init();
+ 	static void shutdown();
+diff --git a/SpaceCadetPinball/options.cpp b/SpaceCadetPinball/options.cpp
+index 99704d2..f3b029e 100644
+--- a/SpaceCadetPinball/options.cpp
++++ b/SpaceCadetPinball/options.cpp
+@@ -1,5 +1,9 @@
+ #include "pch.h"
+ #include "options.h"
++#ifdef __EMSCRIPTEN__
++#include <emscripten/html5.h>
++#include <emscripten.h>
++#endif
+ 
+ #include "fullscrn.h"
+ #include "memory.h"
+@@ -98,7 +102,18 @@ void options::init()
+ 	Options.RightTableBumpKey = get_int("Right Table Bump key", Options.RightTableBumpKey);
+ 	Options.BottomTableBumpKey = get_int("Bottom Table Bump key", Options.BottomTableBumpKey);
+ 	Options.UniformScaling = get_int("Uniform scaling", Options.UniformScaling);
++#ifdef __EMSCRIPTEN__
++	// Web: canvas is rendered at device-pixel resolution, so scale the menus to match,
++	// and default to the compact (mobile-friendly) layout.
++	{
++		int shortSide = EM_ASM_INT({ return Math.min(window.innerWidth, window.innerHeight); });
++		ImGui::GetIO().FontGlobalScale = get_float("UI Scale", shortSide < 600 ? 1.5f : 1.0f);
++	}
++	Options.CompactLayout = get_int("Compact Layout", true);
++#else
+ 	ImGui::GetIO().FontGlobalScale = get_float("UI Scale", 1.0f);
++	Options.CompactLayout = get_int("Compact Layout", false);
++#endif
+ 	Options.Resolution = get_int("Screen Resolution", -1);
+ 	Options.LinearFiltering = get_int("Linear Filtering", true);
+ 	Options.FramesPerSecond = std::min(MaxFps, std::max(MinUps, get_int("Frames Per Second", DefFps)));
+diff --git a/SpaceCadetPinball/options.h b/SpaceCadetPinball/options.h
+index a57e05c..7204aae 100644
+--- a/SpaceCadetPinball/options.h
++++ b/SpaceCadetPinball/options.h
+@@ -49,6 +49,7 @@ struct optionsStruct
+ 	int Resolution;
+ 	bool UniformScaling;
+ 	bool LinearFiltering;
++	bool CompactLayout;
+ 	int FramesPerSecond;
+ 	int UpdatesPerSecond;
+ };
+diff --git a/SpaceCadetPinball/render.cpp b/SpaceCadetPinball/render.cpp
+index b5f2e88..120a5fa 100644
+--- a/SpaceCadetPinball/render.cpp
++++ b/SpaceCadetPinball/render.cpp
+@@ -7,6 +7,7 @@
+ #include "pb.h"
+ #include "TPinballTable.h"
+ #include "winmain.h"
++#include "fullscrn.h"
+ 
+ int render::many_dirty, render::many_sprites, render::many_balls;
+ render_sprite_type_struct **render::dirty_list, **render::sprite_list, **render::ball_list;
+@@ -636,8 +637,79 @@ void render::BlitVScreen()
+ 	SDL_UnlockTexture(vScreenTex);
+ }
+ 
++// Compact layout: draw the playfield as large as the window allows (it fills the
++// limiting dimension) and show only the Ball and Score boxes from the side panel.
++// Portrait: a slim [BALL n][score] strip above the table. Landscape: the two boxes
++// stacked beside the table. Whichever arrangement yields the bigger table wins.
++static void PresentCompact(SDL_Texture* tex)
++{
++	auto renderer = winmain::Renderer;
++	int W, H;
++	SDL_GetRendererOutputSize(renderer, &W, &H);
++
++	const auto& vs = render::vscreen;
++	const float sx = vs.Width / 600.0f, sy = vs.Height / 416.0f; // measured at 640x480
++	auto R = [&](int x, int y, int w, int h)
++	{
++		return SDL_Rect{int(x * sx), int(y * sy), int(w * sx), int(h * sy)};
++	};
++	const int tw = pb::MainTable->Width, th = vs.Height;
++	const SDL_Rect tableSrc{0, 0, tw, th};
++	const SDL_Rect ball = R(490, 147, 91, 38), score = R(428, 189, 154, 38);
++	const float g = 4 * sx;
++	const float pad = 4.0f * ImGui::GetIO().FontGlobalScale;
++	// window -> output pixel ratio, for the CSS-pixel safe-area insets
++	int ww, wh;
++	SDL_GetWindowSize(winmain::MainWindow, &ww, &wh);
++	const float px = ww > 0 ? static_cast<float>(W) / ww : 1.0f;
++	const float iL = fullscrn::SafeInsets[0] * px, iT = fullscrn::SafeInsets[1] * px,
++	            iR = fullscrn::SafeInsets[2] * px, iB = fullscrn::SafeInsets[3] * px;
++	const float availW = W - iL - iR - pad * 2, availH = H - iT - iB - pad * 2;
++
++	// Landscape: table, then a column with ball over score
++	const float colW = std::max(ball.w, score.w), colH = ball.h + g + score.h;
++	const float k = 0.8f;
++	const float sL = std::min(availH / th, (availW - pad) / (tw + k * colW));
++	// Portrait: strip [ball][score] on top, table underneath
++	const float stripW = ball.w + g + score.w, stripH = static_cast<float>(score.h);
++	float sP = std::min(availW / tw, (availH - pad) / (th + stripH));
++	const float sS = std::min(sP, availW / stripW);
++	sP = std::min(availW / tw, (availH - pad - stripH * sS) / th);
++
++	auto copy = [&](const SDL_Rect& src, float x, float y, float s)
++	{
++		SDL_Rect dst{int(x), int(y), int(src.w * s + 0.5f), int(src.h * s + 0.5f)};
++		SDL_RenderCopy(renderer, tex, &src, &dst);
++	};
++
++	if (sL >= sP)
++	{
++		const float sT = sL, sC = sL * k;
++		const float groupW = tw * sT + pad + colW * sC;
++		const float x0 = iL + pad + (availW - groupW) / 2, y0 = iT + pad + (availH - th * sT) / 2;
++		copy(tableSrc, x0, y0, sT);
++		const float cx = x0 + tw * sT + pad;
++		copy(ball, cx + (colW - ball.w) * sC, y0, sC);
++		copy(score, cx + (colW - score.w) * sC, y0 + (ball.h + g) * sC, sC);
++	}
++	else
++	{
++		const float sT = sP;
++		// centre the strip + table vertically
++		const float groupH = stripH * sS + pad + th * sT;
++		const float y0 = iT + pad + std::max(0.0f, (availH - groupH) / 2);
++		const float x0 = iL + pad + (availW - stripW * sS) / 2;
++		copy(ball, x0, y0, sS);
++		copy(score, x0 + (ball.w + g) * sS, y0, sS);
++		copy(tableSrc, iL + pad + (availW - tw * sT) / 2, y0 + stripH * sS + pad, sT);
++	}
++}
++
+ void render::PresentVScreen()
+ {
+ 	BlitVScreen();
+-	SDL_RenderCopy(winmain::Renderer, vScreenTex, nullptr, &DestinationRect);
++	if (options::Options.CompactLayout && pb::MainTable)
++		PresentCompact(vScreenTex);
++	else
++		SDL_RenderCopy(winmain::Renderer, vScreenTex, nullptr, &DestinationRect);
+ }
+diff --git a/SpaceCadetPinball/winmain.cpp b/SpaceCadetPinball/winmain.cpp
+index 4f78055..55dad57 100644
+--- a/SpaceCadetPinball/winmain.cpp
++++ b/SpaceCadetPinball/winmain.cpp
+@@ -349,7 +349,40 @@ void winmain::RenderUi()
+ 		ImGui::ShowDemoWindow(&ShowImGuiDemo);
+ #endif
+ 
+-	if (ImGui::BeginMainMenuBar())
++	// Compact (mobile) layout: no menu bar during play. Pausing shows an opaque
++	// pause screen with big buttons and the full Game/Options/Help menu bar.
++	const bool compact = options::Options.CompactLayout;
++	const bool paused = single_step != 0;
++	const bool pauseScreen = compact && paused;
++	bool menuOpen = false;
++	ImGuiViewport* vp = ImGui::GetMainViewport();
++	const float s = ImGui::GetIO().FontGlobalScale;
++	ImVec2 pPos, pSize;
++	if (pauseScreen)
++	{
++		// Opaque background over the whole screen, then a window inside the safe area
++		// whose menu bar holds the full Game / Options / Help menus.
++		const ImU32 bg = IM_COL32(8, 10, 38, 255);
++		ImGui::GetBackgroundDrawList()->AddRectFilled(vp->Pos, ImVec2(vp->Pos.x + vp->Size.x, vp->Pos.y + vp->Size.y), bg);
++		const float* in = fullscrn::SafeInsets;
++		pPos = ImVec2(vp->Pos.x + in[0], vp->Pos.y + in[1]);
++		pSize = ImVec2(vp->Size.x - in[0] - in[2], vp->Size.y - in[1] - in[3]);
++		ImGui::SetNextWindowPos(pPos);
++		ImGui::SetNextWindowSize(pSize);
++		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.03f, 0.04f, 0.15f, 1.0f));
++		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
++		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
++		ImGui::Begin("##PauseScreen", nullptr,
++		             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
++		             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar |
++		             ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav);
++		ImGui::PopStyleVar(2);
++		ImGui::PopStyleColor();
++		menuOpen = ImGui::BeginMenuBar();
++	}
++	else if (!compact)
++		menuOpen = ImGui::BeginMainMenuBar();
++	if (menuOpen)
+ 	{
+ 		if (ImGui::BeginMenu("Game"))
+ 		{
+@@ -468,6 +501,11 @@ void winmain::RenderUi()
+ 				{
+ 					options::toggle(Menu1::WindowLinearFilter);
+ 				}
++				if (ImGui::MenuItem("Compact Layout", nullptr, options::Options.CompactLayout))
++				{
++					options::Options.CompactLayout ^= true;
++					options::set_int("Compact Layout", options::Options.CompactLayout);
++				}
+ 				ImGui::DragFloat("UI Scale", &ImIO->FontGlobalScale, 0.005f, 0.8f, 5,
+ 				                 "%.2f", ImGuiSliderFlags_AlwaysClamp);
+ 				ImGui::Separator();
+@@ -531,7 +569,66 @@ void winmain::RenderUi()
+ 		if (DispFrameRate && !FpsDetails.empty())
+ 			if (ImGui::BeginMenu(FpsDetails.c_str()))
+ 				ImGui::EndMenu();
+-		ImGui::EndMainMenuBar();
++		if (pauseScreen)
++			ImGui::EndMenuBar();
++		else
++			ImGui::EndMainMenuBar();
++	}
++
++	if (pauseScreen)
++	{
++		// Pause screen body: title + big buttons, sized to fit (landscape phones are short)
++		const float menuH = ImGui::GetFrameHeight();
++		const float want = 13.0f * s * 2.5f + 3 * 30.0f * s + 7 * 10.0f * s + 13.0f * s;
++		const float avail = pSize.y - menuH - 10.0f * s;
++		const float f = want > avail ? std::max(0.45f, avail / want) : 1.0f;
++		const float bw = std::min(pSize.x * 0.75f, 240.0f * s), bh = std::max(30.0f * s * f, 13.0f * s + 8), gap = 10.0f * s * f;
++		ImGui::SetCursorPosY(menuH + std::max(0.0f, (pSize.y - menuH - want * f) / 2));
++
++		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.91f, 0.93f, 1.0f, 1.0f));
++		ImGui::SetWindowFontScale(2.5f * f);
++		const char* title = "PAUSED";
++		ImGui::SetCursorPosX((pSize.x - ImGui::CalcTextSize(title).x) / 2);
++		ImGui::TextUnformatted(title);
++		ImGui::SetWindowFontScale(1.0f);
++		ImGui::PopStyleColor();
++		ImGui::Dummy(ImVec2(0, gap));
++
++		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.67f, 0.16f, 1.0f));
++		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.76f, 0.35f, 1.0f));
++		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.9f, 0.55f, 0.1f, 1.0f));
++		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.06f, 0.19f, 1.0f));
++		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f * s);
++		auto bigButton = [&](const char* label, bool enabled)
++		{
++			ImGui::SetCursorPosX((pSize.x - bw) / 2);
++			if (!enabled)
++				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.4f);
++			const bool pressed = ImGui::Button(label, ImVec2(bw, bh)) && enabled;
++			if (!enabled)
++				ImGui::PopStyleVar();
++			ImGui::Dummy(ImVec2(0, gap * 0.5f));
++			return pressed;
++		};
++		const bool doResume = bigButton("Resume", true);
++		const bool doNew = bigButton("New Game", true);
++		const bool doScores = bigButton("High Scores", HighScoresEnabled);
++		ImGui::PopStyleVar();
++		ImGui::PopStyleColor(4);
++
++		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.57f, 0.75f, 1.0f));
++		const char* hint = "Settings: menus at the top";
++		ImGui::SetCursorPosX(std::max(0.0f, (pSize.x - ImGui::CalcTextSize(hint).x) / 2));
++		ImGui::TextUnformatted(hint);
++		ImGui::PopStyleColor();
++		ImGui::End();
++
++		if (doResume)
++			end_pause();
++		else if (doNew)
++			new_game();
++		else if (doScores)
++			pb::high_scores();
+ 	}
+ 
+ 	a_dialog();
